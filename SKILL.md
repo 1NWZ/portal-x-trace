@@ -1,11 +1,11 @@
 ---
 name: portal-x-trace
-description: Use the bundled PORTAL-X TRACE browser compositor to add tracking boxes, evidence labels, scientific grids, surveillance overlays, glitch effects, and film grain to images or videos, then export PNG frames or WebM recordings. Static image input defaults to a static PNG output. Trigger for cyberpunk visuals, technical data overlays, found-footage graphics, motion tracking aesthetics, experimental posters, social-media covers, or processed image and video artwork.
+description: Create PORTAL-X TRACE visuals with tracking boxes, evidence labels, scientific grids, surveillance overlays, glitch and film grain. Prepare Seedance image-to-video prompts and use an available authorized model tool or web workflow for AI video without requiring API setup; use the bundled browser compositor for static PNG artwork. Preserve the model-native video format. Trigger for cyberpunk visuals, technical data overlays, found-footage graphics, motion tracking aesthetics, experimental posters, social-media covers, or processed image and video artwork.
 ---
 
 # PORTAL-X TRACE Visual Compositor
 
-Use the self-contained static app in `assets/webapp/index.html`. The app processes user media locally in the browser and does not require external libraries or CDN access.
+This edition requires no API configuration. Route by the requested deliverable: video requests use a Seedance prompt and an available authorized model tool or web workflow; static artwork uses `assets/webapp/index.html`. If no video-generation capability is available, deliver a ready-to-use prompt and a short manual handoff, clearly labeled as preparation rather than a generated video. Do not request an API key or model endpoint as a prerequisite.
 
 ## Launch the compositor
 
@@ -18,14 +18,23 @@ If a distribution platform removed the HTML asset, explain that the complete Ski
 
 ## Output selection
 
-- For a static source image, default to one static PNG. Preserve the source photograph as a still image within the composition; capture overlays and effects in a single frame.
-- Do not infer an animation or video request from tracking, glitch, grain, or cyberpunk styling. The live preview may animate, but the delivered PNG must remain a single still image.
-- Use WebM recording for a static source only when the user explicitly requests animation or video.
-- Preserve the original input file unchanged and save the processed PNG as a separate file.
+- An explicit request for video, animation, image-to-video, or moving footage takes precedence over the input file type: follow the Seedance workflow even when the input is a static photograph.
+- For a static artwork request, or a photo without any motion request, default to a separate static PNG and preserve the original file.
+- Preserve the video format returned by Seedance. Do not require MP4, transcode automatically, or rename an extension to imply conversion.
+- Browser canvas recording is only for an explicit request to record the local effects preview. Never substitute it for AI video generation, including after a Seedance failure.
 
-## Compose an image or video
+## AI video with Seedance — no API required
 
-1. Ask for the source image or video and any necessary missing composition choices (output ratio, visual style, theme color). For static image input, use PNG without asking the user to choose between still and video. For video input, clarify still PNG versus WebM when the requested deliverable is unclear.
+1. Read `references/seedance-no-api.md`. Inspect the supplied image and resolve the requested motion. If an image is missing, request it; do not invent its visual details. Choose modest motion and a short single shot unless the user specifies otherwise.
+2. Produce a complete, image-specific Chinese prompt: source identity and composition, subject motion, camera movement, one TRACE style, overlay behavior, color, and constraints. Preserve a still subject only when the user requests it; a static input alone does not prohibit motion.
+3. Check for an already available Seedance-capable tool or authorized web workflow. Do not assume this skill supplies a model, account, credits, or credentials. Do not invoke an unrelated image model as a video substitute.
+4. If a usable tool exists, use its actual schema. For a web workflow, inspect the current page and available options rather than inventing model names or controls. Use the user's selected account and source image; if login or a required account action needs the user, hand off that step. Do not purchase credits or subscriptions automatically.
+5. If model access is unavailable, deliver the prompt with concise instructions to upload the photo to the user's Seedance-capable interface, choose image-to-video and supported settings, then generate. Label the result “视频生成提示词（尚未生成视频）”. Do not repeatedly ask for an API key, block prompt preparation on setup, or claim that a prompt is a finished video.
+6. After a real generation, inspect available playback for identity, intended motion, stable overlays and visual artifacts. Deliver through the host's media preview when supported, otherwise provide the actual result link. Preserve the returned format, including WebM or MP4; the format does not determine whether it was AI-generated. Clearly distinguish submitted, still generating, failed, and completed states. Check existing task status before retrying an uncertain submission.
+
+## Local compositor: static artwork or explicit preview recording
+
+1. Use this workflow for static artwork or an explicit local-preview recording request. Resolve the source and necessary composition choices (ratio, style, theme color). AI video requests use the Seedance workflow above.
 2. Upload one image or video through `Media & Ratio`.
 3. Select the output ratio. Use `3:4` for a Xiaohongshu portrait image, `9:16` for vertical video, `1:1` for square artwork, or `Original Ratio` when preservation matters.
 4. Choose one master style:
@@ -41,7 +50,7 @@ If a distribution platform removed the HTML asset, explain that the complete Ski
 ## Export
 
 - Click `Export Frame (.PNG)` to save the current canvas as a still image.
-- Only when video output is requested, click `REC Video (.WebM)`, let the desired segment play, then click `STOP RECORDING...` to finish and save it.
+- Only when local preview recording is explicitly requested, click `REC Video (.WebM)`, let the desired segment play, then click `STOP RECORDING...` to finish and save it.
 - Keep the browser tab active while recording when possible because background-tab throttling can affect animation timing.
 - If WebM recording is unavailable, use a current Chromium-based browser or export still PNG frames instead.
 
@@ -52,7 +61,7 @@ If a distribution platform removed the HTML asset, explain that the complete Ski
 - Reduce tracker count and glow when the source is visually busy.
 - Use moderate grain and glitch coverage for readable editorial work; increase them only for intentionally degraded visuals.
 - Treat motion tracking as an aesthetic approximation rather than measurement-grade computer vision.
-- Do not upload private media to external services: processing and export happen locally in the browser.
+- Local compositor processing stays in the browser. Actual AI generation through a model tool or web service sends the selected image and prompt to that service; use only the media supplied for this task and disclose that remote processing when starting generation.
 
 ## Preserve and deploy
 
