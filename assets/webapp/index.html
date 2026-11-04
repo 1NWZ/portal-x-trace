@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PORTAL-X TRACE | Visual Compositor V0.6</title>
+    <style>
+        :root {
+            --bg: #050505; --panel: #0d0d0d; --text: #e0e0e0; 
+            --text-dim: #666; --border: #222; --input-bg: #111;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: var(--bg); color: var(--text); font-family: 'Courier New', Courier, monospace; display: flex; height: 100vh; overflow: hidden; font-size: 11px; }
+        
+        #left-panel { width: 340px; min-width: 340px; background-color: var(--panel); border-right: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; z-index: 10; }
+        
+        .section-title { color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; font-size: 10px; border-bottom: 1px dashed var(--border); padding-bottom: 4px; }
+        .control-group { display: flex; flex-direction: column; gap: 12px; margin-bottom: 10px; }
+        
+        .row { display: flex; justify-content: space-between; align-items: center; }
+        .input-row { display: flex; align-items: center; gap: 8px; }
+        .input-row span { width: 85px; color: var(--text-dim); flex-shrink: 0; }
+        
+        input[type="file"] { font-size: 10px; color: var(--text-dim); width: 100%; }
+        select, input[type="text"], button { width: 100%; background: var(--input-bg); border: 1px solid var(--border); color: var(--text); font-family: inherit; padding: 6px; font-size: 11px; }
+        input[type="color"] { width: 100%; height: 28px; background: none; border: 1px solid var(--border); cursor: pointer; padding: 0; }
+        select:focus, input[type="text"]:focus, button:hover { border-color: var(--text-dim); outline: none; }
+        
+        input[type="range"] { width: 100%; accent-color: #fff; height: 4px; background: var(--border); appearance: none; outline: none; margin-top: 4px; }
+        input[type="range"]::-webkit-slider-thumb { appearance: none; width: 10px; height: 10px; background: #fff; cursor: pointer; }
+        
+        .btn-primary { background: var(--text); color: var(--bg); font-weight: bold; padding: 10px; cursor: pointer; margin-top: 5px;}
+        .btn-record { background: #ff3333; color: white; border-color: #ff3333; font-weight: bold; padding: 10px; cursor: pointer;}
+        .btn-record.recording { animation: pulse 1s infinite; background: #990000; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        .style-config { display: none; background: #111; padding: 15px; border: 1px solid var(--border); }
+        .style-config.active { display: block; }
+
+        #workspace { flex-grow: 1; display: flex; align-items: center; justify-content: center; padding: 40px; position: relative; background: #000; overflow: hidden; }
+        video, img { display: none; }
+        #canvas-container { position: relative; max-width: 100%; max-height: 100%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 40px rgba(0,0,0,1); }
+        canvas { max-width: 100%; max-height: 100%; cursor: crosshair; }
+        .header { position: absolute; top: 20px; left: 40px; opacity: 0.3; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <div id="left-panel">
+        <div>
+            <div class="section-title">01 Media & Ratio</div>
+            <div class="control-group">
+                <input type="file" id="media-upload" accept="video/*, image/*">
+                <select id="aspect-ratio">
+                    <option value="auto">Original Ratio</option>
+                    <option value="16:9">16:9 (Landscape)</option>
+                    <option value="4:3">4:3 (Standard)</option>
+                    <option value="5:4">5:4 (Archive)</option>
+                    <option value="1:1">1:1 (Square)</option>
+                    <option value="3:4">3:4 (Portrait)</option>
+                    <option value="9:16">9:16 (Vertical)</option>
+                </select>
+            </div>
+        </div>
+
+        <div>
+            <div class="section-title">02 Master Aesthetic (Data Overlay)</div>
+            <div class="control-group">
+                <select id="master-style">
+                    <option value="evidence">Evidence Tree (Hard Archive)</option>
+                    <option value="red">Red Machine (Grungy Blocks)</option>
+                    <option value="biotech">Biotech Grid (Scientific)</option>
+                    <option value="matrix">Surveillance (Dark Matrix)</option>
+                </select>
+                <div class="input-row">
+                    <span>Global Theme Color:</span>
+                    <input type="color" id="global-color" value="#ffffff">
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="section-title">03 Tracker Specs & Text</div>
+            
+            <div id="config-evidence" class="style-config active">
+                <div class="control-group">
+                    <div><span>Tracker Points:</span> <input type="range" id="ev-points" min="0" max="30" value="8"></div>
+                    <div><span>Line Connect Limit:</span> <input type="range" id="ev-lines" min="10" max="100" value="40"></div>
+                    <div><span>Crop Box Size:</span> <input type="range" id="ev-box" min="20" max="150" value="50"></div>
+                    <div class="input-row"><span>Subject:</span><input type="text" id="ev-name" value="It's a Portal"></div>
+                    <div class="input-row"><span>Time/Date:</span><input type="text" id="ev-date" value=""></div>
+                    <div><span>Time Glitch Jitter:</span> <input type="range" id="ev-jitter" min="0" max="20" value="0"></div>
+                    <div class="input-row"><span>Coord Sys:</span><input type="text" id="ev-coord" value="51.5445 N -0.062 E"></div>
+                </div>
+            </div>
+
+            <div id="config-red" class="style-config">
+                <div class="control-group">
+                    <div><span>Tracker Points:</span> <input type="range" id="rm-points" min="0" max="20" value="5"></div>
+                    <div><span>Red Block Density:</span> <input type="range" id="rm-density" min="0" max="100" value="30"></div>
+                    <div><span>Red Block Size:</span> <input type="range" id="rm-blocksize" min="8" max="64" value="16"></div>
+                    <div><span>Red Block Opacity:</span> <input type="range" id="rm-opacity" min="10" max="100" value="40"></div>
+                    <div><span>Target Box Size:</span> <input type="range" id="rm-box" min="40" max="250" value="80"></div>
+                    <div class="input-row"><span>Alert Text:</span><input type="text" id="rm-alert" value="PORTAL-X"></div>
+                    <div class="input-row"><span>Status:</span><input type="text" id="rm-status" value="2026®️ich©️hill"></div>
+                </div>
+            </div>
+
+            <div id="config-biotech" class="style-config">
+                <div class="control-group">
+                    <div><span>Grid Density (Points):</span> <input type="range" id="bg-points" min="0" max="30" value="8"></div>
+                    <div><span>Text Size (px):</span> <input type="range" id="bg-textsize" min="8" max="32" value="11"></div>
+                    <div class="row"><label><input type="checkbox" id="bg-nodes" checked> Draw Intersect Nodes</label></div>
+                    <div class="input-row"><span>Data Prefix X:</span><input type="text" id="bg-prefix-x" value="PORTAL- X:"></div>
+                    <div class="input-row"><span>Data Prefix Y:</span><input type="text" id="bg-prefix-y" value="PORTAL- Y:"></div>
+                </div>
+            </div>
+
+            <div id="config-matrix" class="style-config">
+                <div class="control-group">
+                    <div><span>Tracker Points:</span> <input type="range" id="sm-points" min="0" max="20" value="5"></div>
+                    <div><span>Target Box Size:</span> <input type="range" id="sm-box" min="30" max="200" value="60"></div>
+                    <div><span>Motion Dot Density:</span> <input type="range" id="sm-density" min="0" max="100" value="50"></div>
+                    <div class="input-row"><span>Target ID:</span><input type="text" id="sm-id" value="TRG-881"></div>
+                </div>
+            </div>
+
+            <div style="margin-top: 15px; display:flex; gap: 5px;">
+                <button id="btn-reseed" style="flex:1;">Randomize Positions</button>
+                <button id="btn-clear" style="flex:1;">Clear</button>
+            </div>
+        </div>
+
+        <div>
+            <div class="section-title">04 Image Effects (Stackable FX)</div>
+            <div class="control-group">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <label><input type="checkbox" id="fx-bw" checked> Black & White</label>
+                    <label><input type="checkbox" id="fx-contrast"> Hard Contrast</label>
+                    <label><input type="checkbox" id="fx-invert"> Invert Image</label>
+                    <label><input type="checkbox" id="fx-ascii"> ASCII Render</label>
+                    <label><input type="checkbox" id="fx-glow"> Deep Glow</label>
+                    <label><input type="checkbox" id="fx-grain" checked> Film Grain</label>
+                </div>
+                <div style="margin-top: 10px;">
+                    <div class="row"><span>Glitch Mask Area</span><span id="val-glitch">100%</span></div>
+                    <input type="range" id="fx-glitch-slider" min="0" max="100" value="100">
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px;">
+            <button class="btn-primary" id="btn-export-png">Export Frame (.PNG)</button>
+            <button class="btn-record" id="btn-export-vid">REC Video (.WebM)</button>
+        </div>
+    </div>
+
+    <div id="workspace">
+        <div class="header">PORTAL-X // COMPOSITOR // V0.6 ARCHITECTURE</div>
+        <video id="media-video" loop muted playsinline autoplay></video>
+        <img id="media-img" alt="source">
+        <div id="canvas-container">
+            <canvas id="render-canvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('render-canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        // 离屏 Canvas，用于渲染完整的滤镜特效图
+        const offCanvas = document.createElement('canvas');
+        const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
+        
+        const upload = document.getElementById('media-upload');
+        const videoEl = document.getElementById('media-video');
+        const imgEl = document.getElementById('media-img');
+        const ratioSelect = document.getElementById('aspect-ratio');
+        const styleSelect = document.getElementById('master-style');
+        
+        let mediaType = null;
+        let animationId;
+        let trackers = [];
+        let prevFrameData = null; 
+        
+        let mediaRecorder;
+        let recordedChunks = [];
+        let isRecording = false;
+
+        // 初始化当前时间
+        document.getElementById('ev-date').value = new Date().toLocaleString();
+
+        // UI 风格切换逻辑
+        styleSelect.addEventListener('change', (e) => {
+            document.querySelectorAll('.style-config').forEach(el => el.classList.remove('active'));
+            document.getElementById('config-' + e.target.value).classList.add('active');
+            syncTrackerCount();
+        });
+
+        // 效果区域遮罩滑块数值显示
+        document.getElementById('fx-glitch-slider').addEventListener('input', e => {
+            document.getElementById('val-glitch').innerText = e.target.value + '%';
+        });
+
+        // 核心逻辑：动态无缝增减追踪点
+        function syncTrackerCount() {
+            let targetCount = 0;
+            const style = styleSelect.value;
+            if(style === 'evidence') targetCount = parseInt(document.getElementById('ev-points').value);
+            if(style === 'red') targetCount = parseInt(document.getElementById('rm-points').value);
+            if(style === 'biotech') targetCount = parseInt(document.getElementById('bg-points').value);
+            if(style === 'matrix') targetCount = parseInt(document.getElementById('sm-points').value);
+
+            // 增加点
+            while (trackers.length < targetCount) {
+                trackers.push({
+                    id: Math.random().toString(36).substr(2, 4).toUpperCase(),
+                    x: canvas.width * 0.1 + Math.random() * canvas.width * 0.8,
+                    y: canvas.height * 0.1 + Math.random() * canvas.height * 0.8
+                });
+            }
+            // 减少点
+            while (trackers.length > targetCount) trackers.pop();
+        }
+
+        // 绑定点数滑块实现实时更新
+        ['ev-points', 'rm-points', 'bg-points', 'sm-points'].forEach(id => {
+            document.getElementById(id).addEventListener('input', syncTrackerCount);
+        });
+
+        // 画布尺寸裁切逻辑
+        function updateCanvasSize() {
+            if(!mediaType) return;
+            let sourceW = mediaType === 'video' ? videoEl.videoWidth : imgEl.naturalWidth;
+            let sourceH = mediaType === 'video' ? videoEl.videoHeight : imgEl.naturalHeight;
+            if(sourceW === 0 || sourceH === 0) return;
+
+            let targetRatio = sourceW / sourceH;
+            if (ratioSelect.value !== 'auto') {
+                const [w, h] = ratioSelect.value.split(':').map(Number);
+                targetRatio = w / h;
+            }
+            const MAX_DIM = 1080;
+            if (targetRatio >= 1) {
+                canvas.width = Math.min(sourceW, MAX_DIM); canvas.height = canvas.width / targetRatio;
+            } else {
+                canvas.height = Math.min(sourceH, MAX_DIM); canvas.width = canvas.height * targetRatio;
+            }
+            offCanvas.width = canvas.width; offCanvas.height = canvas.height;
+            prevFrameData = null; 
+            syncTrackerCount();
+        }
+
+        ratioSelect.addEventListener('change', updateCanvasSize);
+
+        // 媒体上传处理
+        upload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+            
+            if (file.type.startsWith('video/')) {
+                mediaType = 'video'; 
+                videoEl.src = url; 
+                // 使用 Promise 处理视频播放，避免浏览器拦截报错
+                videoEl.play().then(() => {
+                    updateCanvasSize();
+                }).catch(err => console.log("Video Play Error:", err));
+                videoEl.onloadedmetadata = updateCanvasSize;
+            } else if (file.type.startsWith('image/')) {
+                mediaType = 'image'; 
+                imgEl.src = url; 
+                imgEl.onload = updateCanvasSize;
+            }
+            if(!animationId) renderLoop();
+        });
+
+        document.getElementById('btn-reseed').addEventListener('click', () => { trackers = []; syncTrackerCount(); });
+        document.getElementById('btn-clear').addEventListener('click', () => { trackers = []; });
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            trackers.push({
+                id: Math.random().toString(36).substr(2, 4).toUpperCase(),
+                x: (e.clientX - rect.left) * (canvas.width / rect.width),
+                y: (e.clientY - rect.top) * (canvas.height / rect.height)
+            });
+        });
+
+        // 颜色转换工具
+        function hexToRgba(hex, alpha) {
+            const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        // 预生成噪点纹理
+        const noiseCanvas = document.createElement('canvas'); noiseCanvas.width = 256; noiseCanvas.height = 256;
+        const nCtx = noiseCanvas.getContext('2d'); const noiseData = nCtx.createImageData(256, 256);
+        for (let i = 0; i < noiseData.data.length; i += 4) { const val = Math.random() * 255; noiseData.data[i] = noiseData.data[i+1] = noiseData.data[i+2] = val; noiseData.data[i+3] = 40; }
+        nCtx.putImageData(noiseData, 0, 0);
+
+        function getGrayscaleData(imageData) {
+            const data = imageData.data; const gray = new Uint8Array(imageData.width * imageData.height);
+            for (let i = 0, j = 0; i < data.length; i += 4, j++) gray[j] = data[i]*0.299 + data[i+1]*0.587 + data[i+2]*0.114;
+            return gray;
+        }
+
+        // ASCII 渲染逻辑
+        function applyASCII(sourceCtx, w, h, color) {
+            const imgData = sourceCtx.getImageData(0, 0, w, h);
+            const data = imgData.data;
+            sourceCtx.fillStyle = '#000'; sourceCtx.fillRect(0, 0, w, h);
+            sourceCtx.fillStyle = color; sourceCtx.font = 'bold 9px monospace';
+            const chars = " .:-=+*#%@";
+            const step = 9;
+            for(let y = 0; y < h; y += step) {
+                for(let x = 0; x < w; x += step) {
+                    const idx = (y * w + x) * 4;
+                    const brightness = (data[idx] + data[idx+1] + data[idx+2]) / 3;
+                    if(brightness > 20) {
+                        const charIdx = Math.floor((brightness / 255) * (chars.length - 1));
+                        sourceCtx.fillText(chars[charIdx], x, y);
+                    }
+                }
+            }
+        }
+
+        // --- 主渲染循环 ---
+        function renderLoop() {
+            if(!mediaType) { animationId = requestAnimationFrame(renderLoop); return; }
+
+            const sW = mediaType === 'video' ? videoEl.videoWidth : imgEl.naturalWidth;
+            const sH = mediaType === 'video' ? videoEl.videoHeight : imgEl.naturalHeight;
+            const sourceEl = mediaType === 'video' ? videoEl : imgEl;
+            
+            let cropW = sW, cropH = sH, cropX = 0, cropY = 0;
+            if (sW/sH > canvas.width/canvas.height) { cropW = sH * (canvas.width/canvas.height); cropX = (sW - cropW) / 2; } 
+            else { cropH = sW / (canvas.width/canvas.height); cropY = (sH - cropH) / 2; }
+
+            const style = styleSelect.value;
+            const glColor = document.getElementById('global-color').value;
+
+            // 1. 获取光流与帧差所需底层数据
+            offCtx.filter = 'none';
+            offCtx.drawImage(sourceEl, cropX, cropY, cropW, cropH, 0, 0, canvas.width, canvas.height);
+            const currentGray = getGrayscaleData(offCtx.getImageData(0, 0, canvas.width, canvas.height));
+            let motionPoints = [];
+
+            // 运动匹配逻辑 (如果视频正在播放)
+            if (prevFrameData && mediaType === 'video' && !videoEl.paused) {
+                const w = canvas.width; const h = canvas.height;
+                // 检测运动区域 (用于 Red Machine 和 Matrix 的色块生成)
+                if (style === 'matrix' || style === 'red') {
+                    for (let y = 0; y < h; y += 12) {
+                        for (let x = 0; x < w; x += 12) {
+                            if (Math.abs(currentGray[y * w + x] - prevFrameData[y * w + x]) > 25) motionPoints.push({x, y});
+                        }
+                    }
+                }
+                
+                // 光流点位追踪
+                const searchWindow = 16; const patchSize = 8;
+                trackers.forEach(t => {
+                    let bestX = t.x, bestY = t.y, minDiff = Infinity;
+                    let tx = Math.floor(t.x), ty = Math.floor(t.y);
+                    if (tx > patchSize && tx < w - patchSize && ty > patchSize && ty < h - patchSize) {
+                        for (let sy = -searchWindow; sy <= searchWindow; sy += 4) {
+                            for (let sx = -searchWindow; sx <= searchWindow; sx += 4) {
+                                let diffSum = 0;
+                                for (let py = -patchSize; py <= patchSize; py += 4) {
+                                    for (let px = -patchSize; px <= patchSize; px += 4) {
+                                        diffSum += Math.abs(currentGray[((ty+sy+py)*w)+(tx+sx+px)] - prevFrameData[((ty+py)*w)+(tx+px)]);
+                                    }
+                                }
+                                if (diffSum < minDiff) { minDiff = diffSum; bestX = tx+sx; bestY = ty+sy; }
+                            }
+                        }
+                        t.x += (bestX - t.x) * 0.4; t.y += (bestY - t.y) * 0.4;
+                    }
+                });
+            }
+            prevFrameData = currentGray;
+
+            // ----------------------------------------
+            // 模块 04: IMAGE EFFECTS 渲染系统
+            // ----------------------------------------
+            
+            // 先将无任何特效的原始画面画在主 Canvas 上
+            ctx.filter = 'none';
+            ctx.drawImage(sourceEl, cropX, cropY, cropW, cropH, 0, 0, canvas.width, canvas.height);
+
+            // 构建滤镜组合
+            let fxFilter = '';
+            if (document.getElementById('fx-bw').checked) fxFilter += 'grayscale(100%) ';
+            if (document.getElementById('fx-contrast').checked) fxFilter += 'contrast(250%) brightness(0.8) ';
+            if (document.getElementById('fx-invert').checked) fxFilter += 'invert(100%) ';
+            
+            // 将加了滤镜的画面渲染到 离屏Canvas
+            offCtx.filter = fxFilter || 'none';
+            offCtx.drawImage(sourceEl, cropX, cropY, cropW, cropH, 0, 0, offCanvas.width, offCanvas.height);
+            offCtx.filter = 'none'; // 重置防污染
+
+            // ASCII 叠加
+            if (document.getElementById('fx-ascii').checked) applyASCII(offCtx, offCanvas.width, offCanvas.height, glColor);
+
+            // 胶片颗粒叠加
+            if (document.getElementById('fx-grain').checked) {
+                offCtx.globalCompositeOperation = 'overlay';
+                offCtx.drawImage(noiseCanvas, (Math.random()*100), (Math.random()*100), offCanvas.width, offCanvas.height);
+                offCtx.globalCompositeOperation = 'source-over';
+            }
+
+            // 根据 "Glitch Mask Area" 混合特效图与原图
+            const glitchArea = parseInt(document.getElementById('fx-glitch-slider').value) / 100;
+            
+            if (glitchArea >= 1) {
+                // 100%覆盖，直接盖上特效图
+                ctx.drawImage(offCanvas, 0, 0);
+            } else if (glitchArea > 0) {
+                // 随机方块裁剪：创造故障闪烁感
+                const blockCount = Math.floor(glitchArea * 80); // 随机切块数量随面积增加
+                for(let i=0; i<blockCount; i++) {
+                    let w = Math.random() * canvas.width * glitchArea;
+                    let h = Math.random() * canvas.height * glitchArea;
+                    let x = Math.random() * canvas.width;
+                    let y = Math.random() * canvas.height;
+                    ctx.drawImage(offCanvas, x, y, w, h, x, y, w, h);
+                }
+            }
+
+            // Deep Glow 发光处理
+            if (document.getElementById('fx-glow').checked) {
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = glColor;
+            } else {
+                ctx.shadowBlur = 0;
+            }
+
+            // ----------------------------------------
+            // 模块 02/03: TRACKING AESTHETICS 数据层渲染
+            // ----------------------------------------
+            
+            ctx.font = 'bold 11px "Courier New", monospace';
+            
+            // --- 风格: Evidence Tree ---
+            if (style === 'evidence') {
+                const limit = document.getElementById('ev-lines').value / 100 * canvas.width;
+                const bs = parseInt(document.getElementById('ev-box').value);
+                const subj = document.getElementById('ev-name').value;
+                const coord = document.getElementById('ev-coord').value;
+                
+                // 时间扰动逻辑 (Time Jitter)
+                let timeStr = document.getElementById('ev-date').value;
+                const jitter = parseInt(document.getElementById('ev-jitter').value);
+                if (jitter > 0) {
+                    let randomMs = (Math.random() - 0.5) * 1000000000 * jitter; // 基于当前时间加上巨大的随机数
+                    timeStr = new Date(Date.now() + randomMs).toLocaleString();
+                }
+
+                ctx.strokeStyle = glColor; ctx.fillStyle = glColor; ctx.lineWidth = 1;
+                // 连线
+                ctx.beginPath();
+                for(let i=0; i<trackers.length; i++) {
+                    for(let j=i+1; j<trackers.length; j++) {
+                        if(Math.hypot(trackers[i].x-trackers[j].x, trackers[i].y-trackers[j].y) < limit) {
+                            ctx.moveTo(trackers[i].x, trackers[i].y); ctx.lineTo(trackers[j].x, trackers[j].y);
+                        }
+                    }
+                }
+                ctx.stroke();
+
+                trackers.forEach(t => {
+                    ctx.strokeRect(t.x - bs/2, t.y - bs/2, bs, bs);
+                    ctx.beginPath(); ctx.moveTo(t.x + bs/2, t.y - bs/2); ctx.lineTo(t.x + bs/2 + 20, t.y - bs/2 - 20); ctx.lineTo(t.x + bs/2 + 150, t.y - bs/2 - 20); ctx.stroke();
+                    ctx.fillText(`[id:${t.id} SUBJ:${subj}]`, t.x + bs/2 + 22, t.y - bs/2 - 24);
+                    ctx.fillText(`T:${timeStr} L:${coord}`, t.x + bs/2 + 22, t.y - bs/2 - 8);
+                });
+            }
+
+            // --- 风格: Red Machine ---
+            else if (style === 'red') {
+                const density = document.getElementById('rm-density').value / 100;
+                const bsMask = parseInt(document.getElementById('rm-blocksize').value);
+                const opacity = document.getElementById('rm-opacity').value / 100;
+                const bsTarget = parseInt(document.getElementById('rm-box').value);
+                const txtAlert = document.getElementById('rm-alert').value;
+                const txtStatus = document.getElementById('rm-status').value;
+
+                // 渲染拆分后的色块
+                ctx.fillStyle = hexToRgba(glColor, opacity);
+                motionPoints.forEach(p => { if(Math.random() < density) ctx.fillRect(p.x, p.y, bsMask, bsMask); });
+                
+                ctx.strokeStyle = glColor; ctx.lineWidth = 2;
+                trackers.forEach(t => {
+                    ctx.strokeRect(t.x - bsTarget/2, t.y - bsTarget/2, bsTarget, bsTarget);
+                    
+                    // 文字随 Box 缩放适配防溢出
+                    let headerHeight = Math.max(14, bsTarget * 0.18);
+                    ctx.fillStyle = glColor; 
+                    ctx.fillRect(t.x - bsTarget/2, t.y - bsTarget/2 - headerHeight, bsTarget, headerHeight);
+                    
+                    ctx.fillStyle = '#000'; // 字体使用反差色
+                    let fontSize = Math.max(9, headerHeight * 0.8);
+                    ctx.font = `bold ${fontSize}px "Courier New"`;
+                    ctx.fillText(txtAlert, t.x - bsTarget/2 + 4, t.y - bsTarget/2 - (headerHeight * 0.15));
+                    
+                    ctx.fillStyle = glColor; 
+                    ctx.font = `bold 11px "Courier New"`; // 底部状态字体固定
+                    ctx.fillText(txtStatus, t.x - bsTarget/2, t.y + bsTarget/2 + 15);
+                    
+                    // 纵向参考线
+                    ctx.beginPath(); ctx.moveTo(t.x, t.y); ctx.lineTo(t.x, 0); ctx.stroke();
+                });
+            }
+
+            // --- 风格: Biotech Grid ---
+            else if (style === 'biotech') {
+                const txtSize = document.getElementById('bg-textsize').value;
+                const drawNodes = document.getElementById('bg-nodes').checked;
+                const prefixX = document.getElementById('bg-prefix-x').value;
+                const prefixY = document.getElementById('bg-prefix-y').value;
+
+                ctx.strokeStyle = hexToRgba(glColor, 0.6); ctx.fillStyle = glColor; ctx.lineWidth = 0.5; 
+                ctx.font = `${txtSize}px "Consolas", "Courier New", monospace`; // 更硬核的代码字体
+                
+                trackers.forEach(t => {
+                    // 十字相交线
+                    ctx.beginPath(); ctx.moveTo(t.x, 0); ctx.lineTo(t.x, canvas.height); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(0, t.y); ctx.lineTo(canvas.width, t.y); ctx.stroke();
+                    
+                    if(drawNodes) ctx.fillRect(t.x - 2, t.y - 2, 4, 4);
+                    ctx.fillText(`${prefixX} ${(t.x*1.4).toFixed(2)}`, t.x + 8, t.y - 8);
+                    ctx.fillText(`${prefixY} ${(t.y*0.8).toFixed(2)}`, t.x + 8, t.y + parseInt(txtSize) + 2);
+                });
+            }
+
+            // --- 风格: Surveillance Matrix ---
+            else if (style === 'matrix') {
+                const density = document.getElementById('sm-density').value / 100;
+                const targetId = document.getElementById('sm-id').value;
+                const bs = parseInt(document.getElementById('sm-box').value);
+
+                ctx.fillStyle = glColor;
+                motionPoints.forEach(p => { if(Math.random() < density) ctx.fillRect(p.x, p.y, 2, 2); });
+
+                ctx.strokeStyle = glColor; ctx.lineWidth = 1; ctx.font = '11px "Courier New"';
+                trackers.forEach(t => {
+                    ctx.strokeRect(t.x - bs/2, t.y - bs/2, bs, bs);
+                    ctx.strokeRect(t.x - bs/2 - 4, t.y - bs/2 - 4, 4, 4);
+                    
+                    // 纯横向连线判断 (寻找画面最近的左或右边缘)
+                    ctx.beginPath(); 
+                    ctx.moveTo(t.x, t.y); 
+                    let edgeX = t.x < canvas.width/2 ? 0 : canvas.width;
+                    ctx.lineTo(edgeX, t.y); 
+                    ctx.stroke();
+                    
+                    ctx.fillText(`OBJ_${targetId} [SYS_OK]`, t.x - bs/2, t.y - bs/2 - 6);
+                });
+            }
+            
+            // 每帧渲染结束必须重置发光
+            ctx.shadowBlur = 0;
+            animationId = requestAnimationFrame(renderLoop);
+        }
+
+        // --- 导出与录制系统 ---
+        document.getElementById('btn-export-png').addEventListener('click', () => {
+            const link = document.createElement('a'); 
+            link.download = `PORTAL_TRACE_${Date.now()}.png`; 
+            link.href = canvas.toDataURL('image/png', 1.0); 
+            link.click();
+        });
+
+        const btnRecord = document.getElementById('btn-export-vid');
+        btnRecord.addEventListener('click', () => {
+            if (isRecording) {
+                mediaRecorder.stop(); 
+                btnRecord.innerText = 'REC Video (.WebM)'; 
+                btnRecord.classList.remove('recording'); 
+                isRecording = false;
+            } else {
+                try {
+                    const stream = canvas.captureStream(30);
+                    mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+                    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+                    mediaRecorder.onstop = () => {
+                        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                        const link = document.createElement('a'); 
+                        link.href = URL.createObjectURL(blob); 
+                        link.download = `PORTAL_ARCHIVE_${Date.now()}.webm`; 
+                        link.click();
+                        recordedChunks = [];
+                    };
+                    mediaRecorder.start(); 
+                    btnRecord.innerText = 'STOP RECORDING...'; 
+                    btnRecord.classList.add('recording'); 
+                    isRecording = true;
+                } catch (err) { alert('Browser not supported for video export.'); }
+            }
+        });
+    </script>
+</body>
+</html>
